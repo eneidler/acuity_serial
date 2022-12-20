@@ -67,17 +67,6 @@ defmodule AcuitySerial do
   @spec disconnect_device(pid())::none()
   def disconnect_device(pid), do: CU.stop(pid)
 
-  @doc """
-  Used internally to configure the separtor for the incoming serial data.
-
-    Uses the windows representation of a carriage return ("\r\n") by default, but accepts others.
-
-    Returns none()
-
-  """
-  @spec configure_separator(pid(), String.t())::none()
-  defp configure_separator(pid, separator \\ "\r\n"), do: CU.configure(pid, framing: {CU.Framing.Line, separator: separator})
-
   def read_loop(acc \\ 0)
   def read_loop(acc) when acc >= 5, do: :complete
   def read_loop(acc) when acc < 5 do
@@ -131,14 +120,21 @@ defmodule AcuitySerial do
     |> generate_read_list(pid, acc + 1)
   end
 
-  @doc """
-  Reads the incoming serial data, splits it, and converts it to a list of floats.
+ 
+  # Used internally to configure the separtor for the incoming serial data.
+  
+    # Uses the windows representation of a carriage return ("\r\n") by default, but accepts others.
 
-    This is a private function that is only called by generate_read_list/2 and generate_read_list/3
+    # Returns none()
+  @spec configure_separator(pid(), String.t())::none()
+  defp configure_separator(pid, separator \\ "\r\n"), do: CU.configure(pid, framing: {CU.Framing.Line, separator: separator})
 
-    Returns list(float())
 
-  """
+  # Reads the incoming serial data, splits it, and converts it to a list of floats.
+
+    # This is a private function that is only called by generate_read_list/2 and generate_read_list/3
+
+    # Returns list(float())
   @spec read_to_float_list(pid())::list(float())
   defp read_to_float_list(pid) do
     {_, message} = CU.read(pid)
@@ -147,14 +143,12 @@ defmodule AcuitySerial do
   end
 
 
-  @doc """
-  Takes a list of three float values, and outputs a key value list of tuples using ':west', ':center', and ':east' as keys.
 
-    This is a private function that is only called by generate_read_list/2 and generate_read_list/3
+  # Takes a list of three float values, and outputs a key value list of tuples using ':west', ':center', and ':east' as keys.
 
-    Returns list(tuple())
+    # This is a private function that is only called by generate_read_list/2 and generate_read_list/3
 
-  """
+    # Returns list(tuple())
   @spec to_key_value(list(float()))::nonempty_list(tuple())
   defp to_key_value(list) do
     tuple = List.to_tuple(list)
