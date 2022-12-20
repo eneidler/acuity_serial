@@ -2,7 +2,7 @@
 
 ## Overview
 
-This module is designed to be used with the Acuity laser gauging system. It allows serial RS232 data to be pulled from the HMI and output as need in a properly formated list.
+This module is designed to be used with the Acuity laser gauging system. It allows serial RS232 data to be pulled from the HMI and output as needed in a properly formated list.
 
 ## Installation
 

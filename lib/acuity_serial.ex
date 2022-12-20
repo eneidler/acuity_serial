@@ -41,14 +41,22 @@ defmodule AcuitySerial do
 
     Returns pid of device.
 
-    ## Example
-    iex> pid = AcuitySerial.connect_device("COM4")
-    #PID<0.210.0>
+    ## Examples
+      iex> pid = AcuitySerial.connect_device("COM4")
+      #PID<0.210.0>
+
+      iex> AcuitySerial.connect_device(pid)
+      {:error,
+      "Argument must be a string containing a valid device name. Use 'AcuitySerial.available_devices/0' to find devices."}
+
   """
-  @spec connect_device(String.t())::pid()
-  def connect_device(device_name) do
+  @spec connect_device(String.t(), boolean())::pid()
+  def connect_device(device_name, mode \\ false)
+  def connect_device(device_name, _mode) when not is_bitstring(device_name), do: {:input_error, 
+    "Argument must be a string containing a valid device name. Use 'AcuitySerial.available_devices/0' to find devices."}
+  def connect_device(device_name, mode) do
     {:ok, pid} = CU.start_link
-    CU.open(pid, device_name, active: false)
+    CU.open(pid, device_name, active: mode)
     configure_separator(pid)
     pid
   end
@@ -67,23 +75,75 @@ defmodule AcuitySerial do
   @spec disconnect_device(pid())::none()
   def disconnect_device(pid), do: CU.stop(pid)
 
-  def read_loop(acc \\ 0)
-  def read_loop(acc) when acc >= 5, do: :complete
-  def read_loop(acc) when acc < 5 do
+  # TODO: Loop function currently not functional. Do not use. Declared as private to prevent accidental calling from programs.
+  defp read_loop(pid, acc \\ 0)
+  defp read_loop(_pid, acc) when acc >= 5, do: :complete
+  defp read_loop(pid, acc) when acc < 5 do
     IO.puts(acc)
-    Process.sleep(1000)
-    read_loop(acc + 1)
+    IO.inspect(passive_read(pid))
+    #Process.sleep(1000)
+    read_loop(pid, acc + 1)
   end
+
+  @doc """
+  Displays the configuration for the selected 'pid'.
+
+    Returns a tuple with the device name as the first element, and a list of config settings as the second element.
+
+    ## Example
+      iex> AcuitySerial.get_config(pid)
+      {"COM4",
+      [
+        speed: 9600,
+        data_bits: 8,
+        stop_bits: 1,
+        parity: :none,
+        flow_control: :none,
+        active: false,
+        id: :name,
+        rx_framing_timeout: 0,
+        framing: Circuits.UART.Framing.Line
+      ]}
+
+  """
+  @spec get_config(pid())::tuple()
+  def get_config(pid), do: CU.configuration(pid)
+
+  @doc """
+  Sets the read mode for the device at the selected 'pid' either :active or :passive. 
+
+    Will return an error is anything but two valid atoms (:active | :passive) are passed as arguments.
+
+    Returns :ok if valid arguments are give.
+
+    ## Examples
+        iex> AcuitySerial.set_read_mode(pid, :active)
+        :ok
+
+        iex> AcuitySerial.set_read_mode(pid, :passive)
+        :ok
+
+        iex> AcuitySerial.set_read_mode(pid, pid)
+        {:input_error, "Input must be :active or :passive"}
+
+        iex> AcuitySerial.set_read_mode(pid, true)
+        {:input_error, "Input must be :active or :passive"}
+        
+  """
+  @spec set_read_mode(pid(), atom())::none()
+  def set_read_mode(_pid, mode) when mode != :active or mode != :passive, do: {:input_error, "Input must be :active or :passive"}
+  def set_read_mode(pid, mode) when mode == :active, do: CU.configure(pid, active: true)
+  def set_read_mode(pid, mode) when mode == :passive, do: CU.configure(pid, active: false)
 
   @doc """
   This function generates a list containing ten separate keyvalue lists, read from the serial connection.
 
     Automatically formats the incoming data using private functions 'read_to_float_list/1' and 'to_key_value/0'
 
-    Returns tuple(nonempty_list(nonempty_list(tuples())), :complete) when called using generate_read_list/1.
+    Returns tuple(nonempty_list(nonempty_list(tuples())), :complete) when called using passive_read/1.
 
     ## Example
-      iex> AcuitySerial.generate_read_list(pid)
+      iex> AcuitySerial.passive_read(pid)
       {[
         [west: 0.369, center: 0.398, east: 0.392],
         [west: 0.368, center: 0.371, east: 0.352],
@@ -98,26 +158,22 @@ defmodule AcuitySerial do
       ], :complete}
 
   """
-  @spec generate_read_list(pid())::fun(pid(), non_neg_integer())
-  def generate_read_list(pid), do: generate_read_list(pid, 0)
-
-  defp generate_read_list(pid, acc) when acc == 0 do
+  @spec passive_read(pid())::fun(pid(), non_neg_integer())
+  def passive_read(pid), do: passive_read(pid, 0)
+  defp passive_read(pid, acc) when acc == 0 do
     keylist = []
     result = read_to_float_list(pid) 
     |> to_key_value()
 
     List.insert_at(keylist, acc, result)
-    |> generate_read_list(pid, acc + 1)
+    |> passive_read(pid, acc + 1)
   end
-
-  defp generate_read_list(keylist, _pid, acc) when acc >= 10, do: {keylist, :complete}
-
-  defp generate_read_list(keylist, pid, acc) when acc < 10 do
+  defp passive_read(keylist, _pid, acc) when acc >= 10, do: {keylist, :complete}
+  defp passive_read(keylist, pid, acc) when acc < 10 do
     result = read_to_float_list(pid) 
     |> to_key_value()
-
     List.insert_at(keylist, acc, result)
-    |> generate_read_list(pid, acc + 1)
+    |> passive_read(pid, acc + 1)
   end
 
  
@@ -132,7 +188,7 @@ defmodule AcuitySerial do
 
   # Reads the incoming serial data, splits it, and converts it to a list of floats.
 
-    # This is a private function that is only called by generate_read_list/2 and generate_read_list/3
+    # This is a private function that is only called by passive_read/2 and passive_read/3
 
     # Returns list(float())
   @spec read_to_float_list(pid())::list(float())
@@ -143,10 +199,9 @@ defmodule AcuitySerial do
   end
 
 
-
   # Takes a list of three float values, and outputs a key value list of tuples using ':west', ':center', and ':east' as keys.
 
-    # This is a private function that is only called by generate_read_list/2 and generate_read_list/3
+    # This is a private function that is only called by passive_read/2 and passive_read/3
 
     # Returns list(tuple())
   @spec to_key_value(list(float()))::nonempty_list(tuple())
