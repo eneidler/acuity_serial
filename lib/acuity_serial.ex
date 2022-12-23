@@ -32,7 +32,9 @@ defmodule AcuitySerial do
     }
   """
   @spec available_devices()::none()
-  def available_devices(), do: CU.enumerate()
+  def available_devices()do
+    if CU.enumerate() == %{}, do: {:error, "No devices available"}, else: CU.enumerate()
+  end
 
   @doc """
   Connects to the device specified by the string 'device_name'.
@@ -76,14 +78,14 @@ defmodule AcuitySerial do
   def disconnect_device(pid), do: CU.stop(pid)
 
   # TODO: Loop function currently not functional. Do not use. Declared as private to prevent accidental calling from programs.
-  defp read_loop(pid, acc \\ 0)
-  defp read_loop(_pid, acc) when acc >= 5, do: :complete
-  defp read_loop(pid, acc) when acc < 5 do
-    IO.puts(acc)
-    IO.inspect(passive_read(pid))
-    #Process.sleep(1000)
-    read_loop(pid, acc + 1)
-  end
+  # defp read_loop(pid, acc \\ 0)
+  # defp read_loop(_pid, acc) when acc >= 5, do: :complete
+  # defp read_loop(pid, acc) when acc < 5 do
+  #   IO.puts(acc)
+  #   IO.inspect(passive_read(pid))
+  #   #Process.sleep(1000)
+  #   read_loop(pid, acc + 1)
+  # end
 
   @doc """
   Displays the configuration for the selected 'pid'.
