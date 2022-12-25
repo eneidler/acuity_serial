@@ -33,7 +33,11 @@ defmodule AcuitySerial do
   """
   @spec available_devices()::none()
   def available_devices()do
-    if CU.enumerate() == %{}, do: {:error, "No devices available"}, else: CU.enumerate()
+    no_devices = %{}
+    case CU.enumerate do
+       ^no_devices -> {:error, "No devices available"}
+        _  -> {:ok, CU.enumerate}
+    end
   end
 
   @doc """
@@ -54,7 +58,7 @@ defmodule AcuitySerial do
   """
   @spec connect_device(String.t(), boolean())::pid()
   def connect_device(device_name, mode \\ false)
-  def connect_device(device_name, _mode) when not is_bitstring(device_name), do: {:input_error, 
+  def connect_device(device_name, _mode) when not is_bitstring(device_name), do: {:error, 
     "Argument must be a string containing a valid device name. Use 'AcuitySerial.available_devices/0' to find devices."}
   def connect_device(device_name, mode) do
     {:ok, pid} = CU.start_link
@@ -78,15 +82,16 @@ defmodule AcuitySerial do
   def disconnect_device(pid), do: CU.stop(pid)
 
   # TODO: Loop function currently not functional. Do not use. Declared as private to prevent accidental calling from programs.
-  # defp read_loop(pid, acc \\ 0)
-  # defp read_loop(_pid, acc) when acc >= 5, do: :complete
-  # defp read_loop(pid, acc) when acc < 5 do
-  #   IO.puts(acc)
-  #   IO.inspect(passive_read(pid))
-  #   #Process.sleep(1000)
-  #   read_loop(pid, acc + 1)
-  # end
-
+    # defp read_loop(pid, acc \\ 0)
+    # defp read_loop(_pid, acc) when acc >= 5, do: :complete
+    # defp read_loop(pid, acc) when acc < 5 do
+    #   IO.puts(acc)
+    #   IO.inspect(passive_read(pid))
+    #   #Process.sleep(1000)
+    #   read_loop(pid, acc + 1)
+    # end
+  #
+ 
   @doc """
   Displays the configuration for the selected 'pid'.
 
@@ -126,14 +131,15 @@ defmodule AcuitySerial do
         :ok
 
         iex> AcuitySerial.set_read_mode(pid, pid)
-        {:input_error, "Input must be :active or :passive"}
+        {:error, "Input must be :active or :passive"}
 
         iex> AcuitySerial.set_read_mode(pid, true)
-        {:input_error, "Input must be :active or :passive"}
+        {:error, "Input must be :active or :passive"}
         
   """
   @spec set_read_mode(pid(), atom())::none()
-  def set_read_mode(_pid, mode) when mode != :active or mode != :passive, do: {:input_error, "Input must be :active or :passive"}
+  def set_read_mode(_pid, mode) when not is_atom(mode), do: {:error, "Input must be the atom :active or :passive"}
+  def set_read_mode(_pid, mode) when mode != :active or mode != :passive, do: {:error, "Input must be the atom :active or :passive"}
   def set_read_mode(pid, mode) when mode == :active, do: CU.configure(pid, active: true)
   def set_read_mode(pid, mode) when mode == :passive, do: CU.configure(pid, active: false)
 
