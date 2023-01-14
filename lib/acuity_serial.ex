@@ -35,7 +35,7 @@ defmodule AcuitySerial do
   def available_devices()do
     no_devices = %{}
     case CU.enumerate do
-       ^no_devices -> {:error, "No devices available"}
+       ^no_devices -> {:error, "No devices available. Check that device is connected."}
         _  -> {:ok, CU.enumerate}
     end
   end
@@ -139,9 +139,9 @@ defmodule AcuitySerial do
   """
   @spec set_read_mode(pid(), atom())::none()
   def set_read_mode(_pid, mode) when not is_atom(mode), do: {:error, "Input must be the atom :active or :passive"}
-  def set_read_mode(_pid, mode) when mode != :active or mode != :passive, do: {:error, "Input must be the atom :active or :passive"}
   def set_read_mode(pid, mode) when mode == :active, do: CU.configure(pid, active: true)
   def set_read_mode(pid, mode) when mode == :passive, do: CU.configure(pid, active: false)
+  def set_read_mode(_pid, _), do: {:error, "Input must be the atom :active or :passive"}
 
   @doc """
   This function generates a list containing ten separate keyvalue lists, read from the serial connection.
