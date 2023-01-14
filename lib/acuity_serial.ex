@@ -144,6 +144,18 @@ defmodule AcuitySerial do
   def set_read_mode(_pid, _), do: {:error, "Input must be the atom :active or :passive"}
 
   @doc """
+  Receives a single message from connected device in active read mode and prints to the screen.
+  """
+  @spec active_read()::String.t()
+  def active_read do
+    receive do
+      {:circuits_uart, _, msg} -> IO.puts(msg)
+      _other -> IO.puts("No data to report.")
+    after 500 -> IO.puts("No data to report.")
+    end
+  end
+
+  @doc """
   This function generates a list containing ten separate keyvalue lists, read from the serial connection.
 
     Automatically formats the incoming data using private functions 'read_to_float_list/1' and 'to_key_value/0'
