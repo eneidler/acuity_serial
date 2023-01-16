@@ -154,7 +154,7 @@ defmodule AcuitySerial do
   """
   @spec active_read()::String.t()
   def active_read, do: active_read(0)
-  def active_read(acc) do
+  defp active_read(acc) do
     receive do
       {:circuits_uart, _, msg} -> IO.puts(msg)
       _other -> IO.puts("No data to report.")
