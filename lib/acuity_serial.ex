@@ -57,15 +57,21 @@ defmodule AcuitySerial do
 
   """
   @spec connect_device(String.t(), boolean())::pid()
-  def connect_device(device_name, mode \\ false)
+  def connect_device(device_name, mode \\ :passive)
+  def connect_device(_device_name, mode) when is_boolean(mode), do: {:error, "Input must be the atom :active or :passive"}
+  def connect_device(_device_name, mode) when not is_atom(mode), do: {:error, "Input must be the atom :active or :passive"}
   def connect_device(device_name, _mode) when not is_bitstring(device_name), do: {:error, 
     "Argument must be a string containing a valid device name. Use 'AcuitySerial.available_devices/0' to find devices."}
   def connect_device(device_name, mode) do
     {:ok, pid} = CU.start_link
-    CU.open(pid, device_name, active: mode)
+    case mode do
+      :active -> CU.open(pid, device_name, active: true)
+      :passive -> CU.open(pid, device_name, active: false)
+    end
     configure_separator(pid)
     pid
   end
+  
 
   @doc """
   Disconnects the device. This kills the process the device was connected in.
@@ -151,8 +157,9 @@ defmodule AcuitySerial do
     receive do
       {:circuits_uart, _, msg} -> IO.puts(msg)
       _other -> IO.puts("No data to report.")
-    after 500 -> IO.puts("No data to report.")
+    after 1500 -> IO.puts("1500ms with no data.")
     end
+    active_read()
   end
 
   @doc """
