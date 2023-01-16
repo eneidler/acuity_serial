@@ -1,5 +1,5 @@
 defmodule AcuitySerial do
-  #import Circuits.UART
+
   alias Circuits.UART, as: CU
   @moduledoc """
   Documentation for `AcuitySerial`.
@@ -153,13 +153,16 @@ defmodule AcuitySerial do
   Receives a single message from connected device in active read mode and prints to the screen.
   """
   @spec active_read()::String.t()
-  def active_read do
+  def active_read, do: active_read(0)
+  def active_read(acc) do
     receive do
       {:circuits_uart, _, msg} -> IO.puts(msg)
       _other -> IO.puts("No data to report.")
     after 1500 -> IO.puts("1500ms with no data.")
     end
-    active_read()
+    if acc < 50 do
+      active_read(acc + 1)
+    end
   end
 
   @doc """
