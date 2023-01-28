@@ -152,16 +152,16 @@ defmodule AcuitySerial do
   @doc """
   Receives a single message from connected device in active read mode and prints to the screen.
   """
-  @spec active_read()::String.t()
-  def active_read, do: active_read(0)
-  defp active_read(acc) do
+  @spec active_read(String.t())::String.t()
+  def active_read(device_name), do: active_read(device_name, 0)
+  defp active_read(device_name, acc) do
     receive do
-      {:circuits_uart, _, msg} -> IO.puts(msg)
+      {:circuits_uart, ^device_name, msg} -> IO.puts(msg)
       _other -> IO.puts("No data to report.")
     after 1500 -> IO.puts("1500ms with no data.")
     end
     if acc < 50 do
-      active_read(acc + 1)
+      active_read(device_name, acc + 1)
     end
   end
 
