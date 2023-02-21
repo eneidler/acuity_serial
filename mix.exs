@@ -4,7 +4,11 @@ defmodule AcuitySerial.MixProject do
   def project do
     [
       app: :acuity_serial,
+<<<<<<< HEAD
       version: "0.3.2",
+=======
+      version: "0.1.3",
+>>>>>>> dba8adaf6d1798f27f75d6acb25d5cd71502c095
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps()

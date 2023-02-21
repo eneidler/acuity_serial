@@ -1,5 +1,5 @@
 defmodule AcuitySerial do
-  #import Circuits.UART
+
   alias Circuits.UART, as: CU
   @moduledoc """
   Documentation for `AcuitySerial`.
@@ -32,7 +32,13 @@ defmodule AcuitySerial do
     }
   """
   @spec available_devices()::none()
-  def available_devices(), do: CU.enumerate()
+  def available_devices()do
+    no_devices = %{}
+    case CU.enumerate do
+       ^no_devices -> {:error, "No devices available. Check that device is connected."}
+        _  -> {:ok, CU.enumerate}
+    end
+  end
 
   @doc """
   Connects to the device specified by the string 'device_name'.
@@ -51,15 +57,21 @@ defmodule AcuitySerial do
 
   """
   @spec connect_device(String.t(), boolean())::pid()
-  def connect_device(device_name, mode \\ false)
-  def connect_device(device_name, _mode) when not is_bitstring(device_name), do: {:input_error, 
+  def connect_device(device_name, mode \\ :passive)
+  def connect_device(_device_name, mode) when is_boolean(mode), do: {:error, "Input must be the atom :active or :passive"}
+  def connect_device(_device_name, mode) when not is_atom(mode), do: {:error, "Input must be the atom :active or :passive"}
+  def connect_device(device_name, _mode) when not is_bitstring(device_name), do: {:error, 
     "Argument must be a string containing a valid device name. Use 'AcuitySerial.available_devices/0' to find devices."}
   def connect_device(device_name, mode) do
     {:ok, pid} = CU.start_link
-    CU.open(pid, device_name, active: mode)
+    case mode do
+      :active -> CU.open(pid, device_name, active: true)
+      :passive -> CU.open(pid, device_name, active: false)
+    end
     configure_separator(pid)
     pid
   end
+  
 
   @doc """
   Disconnects the device. This kills the process the device was connected in.
@@ -76,15 +88,16 @@ defmodule AcuitySerial do
   def disconnect_device(pid), do: CU.stop(pid)
 
   # TODO: Loop function currently not functional. Do not use. Declared as private to prevent accidental calling from programs.
-  defp read_loop(pid, acc \\ 0)
-  defp read_loop(_pid, acc) when acc >= 5, do: :complete
-  defp read_loop(pid, acc) when acc < 5 do
-    IO.puts(acc)
-    IO.inspect(passive_read(pid))
-    #Process.sleep(1000)
-    read_loop(pid, acc + 1)
-  end
-
+    # defp read_loop(pid, acc \\ 0)
+    # defp read_loop(_pid, acc) when acc >= 5, do: :complete
+    # defp read_loop(pid, acc) when acc < 5 do
+    #   IO.puts(acc)
+    #   IO.inspect(passive_read(pid))
+    #   #Process.sleep(1000)
+    #   read_loop(pid, acc + 1)
+    # end
+  #
+ 
   @doc """
   Displays the configuration for the selected 'pid'.
 
@@ -124,16 +137,33 @@ defmodule AcuitySerial do
         :ok
 
         iex> AcuitySerial.set_read_mode(pid, pid)
-        {:input_error, "Input must be :active or :passive"}
+        {:error, "Input must be :active or :passive"}
 
         iex> AcuitySerial.set_read_mode(pid, true)
-        {:input_error, "Input must be :active or :passive"}
+        {:error, "Input must be :active or :passive"}
         
   """
   @spec set_read_mode(pid(), atom())::none()
-  def set_read_mode(_pid, mode) when mode != :active or mode != :passive, do: {:input_error, "Input must be :active or :passive"}
+  def set_read_mode(_pid, mode) when not is_atom(mode), do: {:error, "Input must be the atom :active or :passive"}
   def set_read_mode(pid, mode) when mode == :active, do: CU.configure(pid, active: true)
   def set_read_mode(pid, mode) when mode == :passive, do: CU.configure(pid, active: false)
+  def set_read_mode(_pid, _), do: {:error, "Input must be the atom :active or :passive"}
+
+  @doc """
+  Receives a single message from connected device in active read mode and prints to the screen.
+  """
+  @spec active_read(String.t())::String.t()
+  def active_read(device_name), do: active_read(device_name, 0)
+  defp active_read(device_name, acc) do
+    receive do
+      {:circuits_uart, ^device_name, msg} -> IO.puts(msg)
+      _other -> IO.puts("No data to report.")
+    after 1500 -> IO.puts("1500ms with no data.")
+    end
+    if acc < 50 do
+      active_read(device_name, acc + 1)
+    end
+  end
 
   @doc """
   This function generates a list containing ten separate keyvalue lists, read from the serial connection.
