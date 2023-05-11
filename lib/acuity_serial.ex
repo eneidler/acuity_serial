@@ -206,6 +206,11 @@ defmodule AcuitySerial do
     |> passive_read(pid, acc + 1)
   end
 
+  # Used to check whether process is still alive
+  @spec alive?(pid())::atom()
+  def alive?(pid) do
+    Process.alive?(pid)
+  end
  
   # Used internally to configure the separtor for the incoming serial data.
   
