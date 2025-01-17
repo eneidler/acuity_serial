@@ -32,7 +32,7 @@ defmodule AcuitySerial do
     }
   """
   @spec available_devices()::none()
-  def available_devices()do
+  def available_devices() do
     no_devices = %{}
     case CU.enumerate do
        ^no_devices -> {:error, "No devices available. Check that device is connected."}
@@ -42,7 +42,7 @@ defmodule AcuitySerial do
 
   @doc """
   Connects to the device specified by the string 'device_name'.
-    
+
     Suggested use is to use assignment when calling so the 'pid' can be used elsewhere. See example.
 
     Returns pid of device.
@@ -60,7 +60,7 @@ defmodule AcuitySerial do
   def connect_device(device_name, mode \\ :passive)
   def connect_device(_device_name, mode) when is_boolean(mode), do: {:error, "Input must be the atom :active or :passive"}
   def connect_device(_device_name, mode) when not is_atom(mode), do: {:error, "Input must be the atom :active or :passive"}
-  def connect_device(device_name, _mode) when not is_bitstring(device_name), do: {:error, 
+  def connect_device(device_name, _mode) when not is_bitstring(device_name), do: {:error,
     "Argument must be a string containing a valid device name. Use 'AcuitySerial.available_devices/0' to find devices."}
   def connect_device(device_name, mode) do
     {:ok, pid} = CU.start_link
@@ -71,7 +71,7 @@ defmodule AcuitySerial do
     configure_separator(pid)
     pid
   end
-  
+
 
   @doc """
   Disconnects the device. This kills the process the device was connected in.
@@ -97,7 +97,7 @@ defmodule AcuitySerial do
     #   read_loop(pid, acc + 1)
     # end
   #
- 
+
   @doc """
   Displays the configuration for the selected 'pid'.
 
@@ -123,7 +123,7 @@ defmodule AcuitySerial do
   def get_config(pid), do: CU.configuration(pid)
 
   @doc """
-  Sets the read mode for the device at the selected 'pid' either :active or :passive. 
+  Sets the read mode for the device at the selected 'pid' either :active or :passive.
 
     Will return an error is anything but two valid atoms (:active | :passive) are passed as arguments.
 
@@ -141,7 +141,7 @@ defmodule AcuitySerial do
 
         iex> AcuitySerial.set_read_mode(pid, true)
         {:error, "Input must be :active or :passive"}
-        
+
   """
   @spec set_read_mode(pid(), atom())::none()
   def set_read_mode(_pid, mode) when not is_atom(mode), do: {:error, "Input must be the atom :active or :passive"}
@@ -192,7 +192,7 @@ defmodule AcuitySerial do
   def passive_read(pid), do: passive_read(pid, 0)
   defp passive_read(pid, acc) when acc == 0 do
     keylist = []
-    result = read_to_float_list(pid) 
+    result = read_to_float_list(pid)
     |> to_key_value()
 
     List.insert_at(keylist, acc, result)
@@ -200,15 +200,15 @@ defmodule AcuitySerial do
   end
   defp passive_read(keylist, _pid, acc) when acc >= 10, do: {keylist, :complete}
   defp passive_read(keylist, pid, acc) when acc < 10 do
-    result = read_to_float_list(pid) 
+    result = read_to_float_list(pid)
     |> to_key_value()
     List.insert_at(keylist, acc, result)
     |> passive_read(pid, acc + 1)
   end
 
- 
+
   # Used internally to configure the separtor for the incoming serial data.
-  
+
     # Uses the windows representation of a carriage return ("\r\n") by default, but accepts others.
 
     # Returns none()
